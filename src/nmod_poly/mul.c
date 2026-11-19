@@ -11,6 +11,7 @@
 */
 
 #include "nmod.h"
+#include "nmod_vec.h"
 #include "nmod_poly.h"
 
 void _nmod_poly_mul(nn_ptr res, nn_srcptr poly1, slong len1,
@@ -33,7 +34,12 @@ void _nmod_poly_mul(nn_ptr res, nn_srcptr poly1, slong len1,
     bits = NMOD_BITS(mod);
     cutoff_len = FLINT_MIN(len1, 2 * len2);
 
-    if (3 * cutoff_len < 2 * FLINT_MAX(bits, 10))
+    /* second case: unbalanced, with the unreduced coefficients of the
+       product fitting in one word, for which the classical product is a
+       vectorized loop with a single final reduction */
+    if (3 * cutoff_len < 2 * FLINT_MAX(bits, 10)
+        || (len2 < 2 * FLINT_MAX(bits, 10) && len1 >= 4 * len2
+            && _nmod_vec_dot_params(len2, mod).method <= _DOT1))
         _nmod_poly_mul_classical(res, poly1, len1, poly2, len2, mod);
     else if (cutoff_len * bits < 800)
         _nmod_poly_mul_KS(res, poly1, len1, poly2, len2, mod);
